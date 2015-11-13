@@ -41,7 +41,11 @@
 #define    kThemeableBrowserPropWwwImagePressed @"wwwImagePressed"
 #define    kThemeableBrowserPropWwwImageDensity @"wwwImageDensity"
 #define    kThemeableBrowserPropStaticText @"staticText"
+#define    kThemeableBrowserPropShowProgress @"showProgress"
+#define    kThemeableBrowserPropTitleTextSize @"textSize"
 #define    kThemeableBrowserPropShowPageTitle @"showPageTitle"
+#define    kThemeableBrowserPropProgressBgColor @"progressBgColor"
+#define    kThemeableBrowserPropProgressColor @"progressColor"
 #define    kThemeableBrowserPropAlign @"align"
 #define    kThemeableBrowserPropTitle @"title"
 #define    kThemeableBrowserPropCancel @"cancel"
@@ -57,6 +61,11 @@
 #define    TOOLBAR_DEF_HEIGHT 44.0
 #define    LOCATIONBAR_HEIGHT 21.0
 #define    FOOTER_HEIGHT ((TOOLBAR_HEIGHT) + (LOCATIONBAR_HEIGHT))
+NSString *completeRPCURLPath = @"/webviewprogressproxy/complete";
+
+const float MyInitialProgressValue = 0.1f;
+const float MyInteractiveProgressValue = 0.5f;
+const float MyFinalProgressValue = 0.9f;
 
 #pragma mark CDVThemeableBrowser
 
@@ -574,6 +583,25 @@
 
 #pragma mark CDVThemeableBrowserViewController
 
+@interface CDVThemeableBrowserViewController ()
+{
+    NSUInteger loadingCount;
+    NSUInteger maxLoadCount;
+    
+    /**
+     *  当前加载的url -- 判断url是否重定向
+     */
+    NSURL *currentURL;
+    
+    /**
+     *  当前加载的进度
+     */
+    CGFloat currentLoadProgress;
+    
+    BOOL interactive;
+}
+@end
+
 @implementation CDVThemeableBrowserViewController
 
 @synthesize currentURL;
@@ -592,6 +620,11 @@
 #endif
         _navigationDelegate = navigationDelegate;
         _statusBarStyle = statusBarStyle;
+        
+        maxLoadCount = loadingCount = 0;
+        //默认值currentLoadProgress = 99;
+        currentLoadProgress = 99;
+        interactive = NO;
         [self createViews];
     }
 
@@ -626,6 +659,7 @@
     self.webView.opaque = YES;
     self.webView.scalesPageToFit = NO;
     self.webView.userInteractionEnabled = YES;
+
 
     self.spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
     self.spinner.alpha = 1.000;
@@ -818,12 +852,21 @@
         if (_browserOptions.title[kThemeableBrowserPropStaticText]) {
             self.titleLabel.text = _browserOptions.title[kThemeableBrowserPropStaticText];
         }
-        
+        CGFloat textSize = [self getFloatFromDict:_browserOptions.title withKey:kThemeableBrowserPropTitleTextSize withDefault:12];
+        self.titleLabel.font=[UIFont systemFontOfSize:textSize];
         [self.toolbar addSubview:self.titleLabel];
     }
 
     self.view.backgroundColor = [CDVThemeableBrowserViewController colorFromRGBA:[self getStringFromDict:_browserOptions.statusbar withKey:kThemeableBrowserPropColor withDefault:@"#ffffffff"]];
     [self.view addSubview:self.toolbar];
+    self.progressView=[[UIProgressView   alloc] initWithFrame:CGRectMake(0.0, toolbarY+toolbarHeight+[self getStatusBarOffset], self.view.bounds.size.width, 20.0)];
+    self.progressView.autoresizingMask = UIViewAutoresizingFlexibleWidth|UIViewAutoresizingFlexibleHeight;
+    self.progressView.progressViewStyle=UIProgressViewStyleDefault;
+    self.progressView.progressTintColor=[CDVThemeableBrowserViewController colorFromRGBA:[self getStringFromDict:_browserOptions.browserProgress withKey: kThemeableBrowserPropProgressColor withDefault:@"#0000FF"]];
+    self.progressView.trackTintColor=[CDVThemeableBrowserViewController colorFromRGBA:[self getStringFromDict:_browserOptions.browserProgress withKey:kThemeableBrowserPropProgressBgColor withDefault:@"#808080"]];
+    if ([self getBoolFromDict:_browserOptions.browserProgress withKey:kThemeableBrowserPropShowProgress]) {
+        [self.view addSubview:self.progressView];
+    }
     // [self.view addSubview:self.addressLabel];
     // [self.view addSubview:self.spinner];
 }
@@ -1352,23 +1395,43 @@
     // loading url, start spinner
 
     self.addressLabel.text = NSLocalizedString(@"Loading...", nil);
-
+    loadingCount++;
+    maxLoadCount = fmax(maxLoadCount, loadingCount);
     [self.spinner startAnimating];
-
-    return [self.navigationDelegate webViewDidStartLoad:theWebView];
+    [self.navigationDelegate webViewDidStartLoad:theWebView];
+    [self startProgress:theWebView];
 }
 
 - (BOOL)webView:(UIWebView*)theWebView shouldStartLoadWithRequest:(NSURLRequest*)request navigationType:(UIWebViewNavigationType)navigationType
 {
-    BOOL isTopLevelNavigation = [request.URL isEqual:[request mainDocumentURL]];
-
+    
+    if ([request.URL.path isEqualToString:completeRPCURLPath]) {
+        [self completeProgress:theWebView];
+        return NO;
+    }
+    
+    BOOL ret = [self.navigationDelegate webView:theWebView shouldStartLoadWithRequest:request navigationType:navigationType];
+    BOOL isFragmentJump = NO;
+    if (request.URL.fragment) {
+        NSString *nonFragmentURL = [request.URL.absoluteString stringByReplacingOccurrencesOfString:[@"#" stringByAppendingString:request.URL.fragment] withString:@""];
+        isFragmentJump = [nonFragmentURL isEqualToString:theWebView.request.URL.absoluteString];
+    }
+    
+    BOOL isTopLevelNavigation = [request.mainDocumentURL isEqual:request.URL];
+    
+    BOOL isHTTP = [request.URL.scheme isEqualToString:@"http"] || [request.URL.scheme isEqualToString:@"https"];
+    if (ret && !isFragmentJump && isHTTP && isTopLevelNavigation) {
+        currentURL = request.URL;
+        [self reset:theWebView];
+    }
+    
     if (isTopLevelNavigation) {
         self.currentURL = request.URL;
     }
     
     [self updateButtonDelayed:theWebView];
     
-    return [self.navigationDelegate webView:theWebView shouldStartLoadWithRequest:request navigationType:navigationType];
+    return ret;
 }
 
 - (void)webViewDidFinishLoad:(UIWebView*)theWebView
@@ -1387,7 +1450,6 @@
     }
 
     [self.spinner stopAnimating];
-
     // Work around a bug where the first time a PDF is opened, all UIWebViews
     // reload their User-Agent from NSUserDefaults.
     // This work-around makes the following assumptions:
@@ -1405,6 +1467,25 @@
     }
 
     [self.navigationDelegate webViewDidFinishLoad:theWebView];
+    loadingCount--;
+    [self incrementProgress:theWebView];
+    
+    NSString *readyState = [theWebView stringByEvaluatingJavaScriptFromString:@"document.readyState"];
+    
+    BOOL tpInteractive = [readyState isEqualToString:@"interactive"];
+    if (tpInteractive)
+    {
+        interactive = YES;
+        NSString *waitForCompleteJS = [NSString stringWithFormat:@"window.addEventListener('load',function() { var iframe = document.createElement('iframe'); iframe.style.display = 'none'; iframe.src = '%@://%@%@'; document.body.appendChild(iframe);  }, false);", theWebView.request.mainDocumentURL.scheme, theWebView.request.mainDocumentURL.host, completeRPCURLPath];
+        [theWebView stringByEvaluatingJavaScriptFromString:waitForCompleteJS];
+    }
+    
+    BOOL isNotRedirect = currentURL && [currentURL isEqual:theWebView.request.mainDocumentURL];
+    BOOL complete = [readyState isEqualToString:@"complete"];
+    if (complete && isNotRedirect)
+    {
+        [self completeProgress:theWebView];
+    }
 }
 
 - (void)webView:(UIWebView*)theWebView didFailLoadWithError:(NSError*)error
@@ -1416,7 +1497,121 @@
     self.addressLabel.text = NSLocalizedString(@"Load Error", nil);
 
     [self.navigationDelegate webView:theWebView didFailLoadWithError:error];
+    loadingCount--;
+    [self incrementProgress:theWebView];
+    
+    NSString *readyState = [theWebView stringByEvaluatingJavaScriptFromString:@"document.readyState"];
+    
+    BOOL tpInteractive = [readyState isEqualToString:@"interactive"];
+    if (tpInteractive)
+    {
+        interactive = YES;
+        NSString *waitForCompleteJS = [NSString stringWithFormat:@"window.addEventListener('load',function() { var iframe = document.createElement('iframe'); iframe.style.display = 'none'; iframe.src = '%@://%@%@'; document.body.appendChild(iframe);  }, false);", theWebView.request.mainDocumentURL.scheme, theWebView.request.mainDocumentURL.host, completeRPCURLPath];
+        [theWebView stringByEvaluatingJavaScriptFromString:waitForCompleteJS];
+    }
+    
+    BOOL isNotRedirect = currentURL && [currentURL isEqual:theWebView.request.mainDocumentURL];
+    BOOL complete = [readyState isEqualToString:@"complete"];
+    if ((complete && isNotRedirect) || error)
+    {
+        [self completeProgress:theWebView];
+    }
 }
+
+/**
+ *  进度结果处理 -- 阀门掌控、数据委托
+ *
+ *  @param progress 进度值
+ *  @param webView  当前使用的webView
+ */
+-(void)setprogress:(CGFloat)progress webView:(UIWebView *)webView
+{
+    
+    if (progress == 0 && (currentLoadProgress == 1 || currentLoadProgress == 99))
+    {
+        //新的开始标记
+        currentLoadProgress = progress;
+       [self.progressView setProgress:progress animated:YES];
+       
+    }
+    else
+    {
+        if (progress > currentLoadProgress)
+        {
+            currentLoadProgress = progress;
+           [self.progressView setProgress:progress animated:YES];
+        }
+    }
+}
+
+- (void) hideAndResetProgress
+{
+    [self.progressView setHidden:YES];
+    [self.progressView setProgress:0 animated:NO];
+}
+/**
+ *  重置
+ */
+- (void)reset:(UIWebView *)webView
+{
+    maxLoadCount = loadingCount = 0;
+    interactive = NO;
+    [self setprogress:0.0 webView:webView];
+}
+
+/**
+ *  开始加载的进度数值
+ *
+ *  @param webView 当前使用的webView
+ */
+- (void)startProgress:(UIWebView *)webView
+{
+    if (currentLoadProgress < MyInitialProgressValue)
+    {
+        [self.progressView setHidden:NO];
+        [self setprogress:MyInitialProgressValue webView:webView];
+    }
+}
+
+/**
+ *  结束加载的进度数值
+ *
+ *  @param webView 当前使用的webView
+ */
+- (void)completeProgress:(UIWebView *)webView
+{
+    [self setprogress:1.0 webView:webView];
+    [NSTimer scheduledTimerWithTimeInterval:1 target:self selector:@selector(hideAndResetProgress) userInfo:nil repeats:NO];
+}
+
+- (void)incrementProgress:(UIWebView *)webView
+{
+    float progress = currentLoadProgress;
+    float maxProgress = interactive ? MyFinalProgressValue : MyInteractiveProgressValue;
+    float remainPercent = (float)loadingCount / (float)maxLoadCount;
+    float increment = (maxProgress - progress) * remainPercent;
+    progress += increment;
+    progress = fmin(progress, maxProgress);
+    [self setprogress:progress webView:webView];
+}
+
+/**
+ *  set方法，获取readonly的currentProgress数值
+ *
+ *  @return currentProgress
+ */
+-(CGFloat)loadProgress
+{
+    if (currentLoadProgress == 99)
+    {
+        return 0;
+    }
+    else
+    {
+        return currentLoadProgress;
+    }
+}
+
 
 - (void)updateButton:(UIWebView*)theWebView
 {
@@ -1522,6 +1717,7 @@
         self.statusbar = nil;
         self.toolbar = nil;
         self.title = nil;
+        self.browserProgress=nil;
         self.backButton = nil;
         self.forwardButton = nil;
         self.closeButton = nil;
