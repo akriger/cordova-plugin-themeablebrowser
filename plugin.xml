@@ -19,14 +19,14 @@
 -->
 
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
-           id="cordova-plugin-themeablebrowser"
+           id="cordova-plugin-themeablebrowser-womack"
       version="0.2.12">
 
     <name>ThemeableBrowser</name>
     <description>Cordova ThemeableBrowser Plugin</description>
     <license>Apache 2.0</license>
     <keywords>cordova,in,app,browser,themeablebrowser</keywords>
-    <repo>https://github.com/initialxy/cordova-plugin-themeablebrowser.git</repo>
+    <repo>https://github.com/akriger/cordova-plugin-themeablebrowser.git</repo>
     <issue>https://github.com/initialxy/cordova-plugin-themeablebrowser/issues</issue>
 
     <engines>
