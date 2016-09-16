@@ -37,12 +37,11 @@ public class InAppChromeClient extends WebChromeClient {
     private CordovaWebView webView;
     private String LOG_TAG = "InAppChromeClient";
     private long MAX_QUOTA = 100 * 1024 * 1024;
-	private ProgressBar progressbar;
-
+    private ProgressBar progressbar;
     public InAppChromeClient(CordovaWebView webView,ProgressBar progressbar) {
         super();
         this.webView = webView;
-		this.progressbar = progressbar;
+        this.progressbar=progressbar;
     }
     /**
      * Handle database quota exceeded notification.
@@ -132,16 +131,15 @@ public class InAppChromeClient extends WebChromeClient {
         }
         return false;
     }
-	@Override
-     public void onProgressChanged(WebView view, int newProgress) {
-         if (newProgress == 100) {
-             progressbar.setVisibility(View.GONE);
-         } else {
-             if (progressbar.getVisibility() == View.GONE)
-                 progressbar.setVisibility(View.VISIBLE);
-             progressbar.setProgress(newProgress);
-         }
-         super.onProgressChanged(view, newProgress);
-     }
-
+    @Override
+    public void onProgressChanged(WebView view, int newProgress) {
+        if (newProgress == 100) {
+            progressbar.setVisibility(View.GONE);
+        } else {
+            if (progressbar.getVisibility() == View.GONE)
+                progressbar.setVisibility(View.VISIBLE);
+            progressbar.setProgress(newProgress);
+        }
+        super.onProgressChanged(view, newProgress);
+    }
 }
