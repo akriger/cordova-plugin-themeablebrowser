@@ -104,6 +104,8 @@
 @property (nonatomic, strong) IBOutlet UIButton* forwardButton;
 @property (nonatomic, strong) IBOutlet UIButton* menuButton;
 @property (nonatomic, strong) IBOutlet UIActivityIndicatorView* spinner;
+@property (nonatomic, strong) IBOutlet UIActivityIndicatorView * activityIndicator;
+@property (nonatomic, strong) IBOutlet UIView * activityIndicatorContainer;
 @property (nonatomic, strong) IBOutlet UIView* toolbar;
 
 @property (nonatomic, strong) NSArray* leftButtons;

@@ -690,7 +690,20 @@
     self.webView.opaque = YES;
     self.webView.scalesPageToFit = NO;
     self.webView.userInteractionEnabled = YES;
-
+	
+	self.activityIndicatorContainer=[[UIView alloc]initWithFrame:CGRectMake(0.0f, 0.0f, 100.0f, 100.0f)];
+    [self.activityIndicatorContainer setCenter:self.view.center];
+    self.activityIndicatorContainer.autoresizingMask= (UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight);
+    [self.activityIndicatorContainer setBackgroundColor:[CDVThemeableBrowserViewController colorFromRGBA:@"#313131"]];
+    [self.activityIndicatorContainer setAlpha:0.3];
+    self.activityIndicatorContainer.layer.cornerRadius=8.0;
+    CGRect indicatorContainerBounds=self.activityIndicatorContainer.bounds;
+    self.activityIndicator=[[UIActivityIndicatorView alloc]initWithFrame:CGRectMake(0.0f, 0.0f, 32.0f, 32.0f)];
+    [self.activityIndicator setCenter:CGPointMake(indicatorContainerBounds.size.width/2, indicatorContainerBounds.size.height/2)];
+    [self.activityIndicator setActivityIndicatorViewStyle:UIActivityIndicatorViewStyleWhiteLarge];
+    [self.activityIndicatorContainer addSubview:self.activityIndicator];
+    [self.view addSubview:self.activityIndicatorContainer];
+ 
     self.spinner = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleWhite];
     self.spinner.alpha = 1.000;
     self.spinner.autoresizesSubviews = YES;
@@ -1418,6 +1431,8 @@
     self.addressLabel.text = NSLocalizedString(@"Loading...", nil);
 
     [self.spinner startAnimating];
+	[self.activityIndicator startAnimating];
+    [self.activityIndicatorContainer setHidden: NO];
 
     return [self.navigationDelegate webViewDidStartLoad:theWebView];
 }
@@ -1476,6 +1491,8 @@
     [self updateButton:theWebView];
 
     [self.spinner stopAnimating];
+	[self.activityIndicatorContainer setHidden: YES];
+    [self.activityIndicator stopAnimating];
 
     self.addressLabel.text = NSLocalizedString(@"Load Error", nil);
 

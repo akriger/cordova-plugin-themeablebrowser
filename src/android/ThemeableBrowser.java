@@ -25,8 +25,11 @@ import android.content.res.Resources;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
+import android.graphics.Color;
 import android.graphics.Paint;
 import android.graphics.drawable.BitmapDrawable;
+import android.graphics.drawable.ClipDrawable;
+import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.StateListDrawable;
 import android.net.Uri;
@@ -58,6 +61,7 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -743,10 +747,29 @@ public class ThemeableBrowser extends CordovaPlugin {
                     title.setTextColor(hexStringToColor(
                             features.title.color != null
                                     ? features.title.color : "#000000ff"));
-                    if (features.title.staticText != null) {
+                    if (features.title.staticText > 0) {
                         title.setText(features.title.staticText);
                     }
                 }
+				final ProgressBar progressbar = new ProgressBar(cordova.getActivity(), null, android.R.attr.progressBarStyleHorizontal);
+                 FrameLayout.LayoutParams progressbarLayout = new FrameLayout.LayoutParams(LayoutParams.MATCH_PARENT, 6);
+                 //progressbarLayout.
+                 progressbar.setLayoutParams(progressbarLayout);
+                 if (features.browserProgress != null){
+                     Integer progressColor=Color.BLUE;
+                     if ( features.browserProgress.progressColor != null
+                             && features.browserProgress.progressColor.length() > 0) {
+                         progressColor = Color.parseColor(features.browserProgress.progressColor);
+                     }
+                     ClipDrawable progressDrawable = new ClipDrawable(new ColorDrawable(progressColor), Gravity.LEFT, ClipDrawable.HORIZONTAL);
+                     progressbar.setProgressDrawable(progressDrawable);
+                     Integer progressBgColor = Color.GRAY;
+                     if ( features.browserProgress.progressBgColor != null
+                             && features.browserProgress.progressBgColor.length() > 0) {
+                         progressBgColor = Color.parseColor(features.browserProgress.progressBgColor);
+                     }
+                     progressbar.setBackgroundColor(progressBgColor);
+                 }
 
                 // WebView
                 inAppWebView = new WebView(cordova.getActivity());
@@ -757,7 +780,7 @@ public class ThemeableBrowser extends CordovaPlugin {
                     ((LinearLayout.LayoutParams) inAppWebViewParams).weight = 1;
                 }
                 inAppWebView.setLayoutParams(inAppWebViewParams);
-                inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView));
+                inAppWebView.setWebChromeClient(new InAppChromeClient(thatWebView, progressbar));
                 WebViewClient client = new ThemeableBrowserClient(thatWebView, new PageLoadListener() {
                     @Override
                     public void onPageFinished(String url, boolean canGoBack, boolean canGoForward) {
@@ -1404,6 +1427,7 @@ public class ThemeableBrowser extends CordovaPlugin {
         public boolean backButtonCanClose;
         public boolean disableAnimation;
         public boolean fullscreen;
+		public BrowserProgress browserProgress;
     }
 
     private static class Event {
@@ -1430,6 +1454,13 @@ public class ThemeableBrowser extends CordovaPlugin {
     private static class BrowserMenu extends BrowserButton {
         public EventLabel[] items;
     }
+	
+	private static class BrowserProgress {
+         public boolean showProgress;
+         public String progressBgColor;
+         public String progressColor;
+     }
+ 
 
     private static class Toolbar {
         public int height = TOOLBAR_DEF_HEIGHT;
