@@ -21,11 +21,6 @@
 <<<<<<< HEAD
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
            id="cordova-plugin-themeablebrowser-womack"
-=======
-<plugin
-      xmlns="http://apache.org/cordova/ns/plugins/1.0"
-      id="cordova-plugin-themeablebrowser-womack"
->>>>>>> origin/master
       version="0.2.17">
 
     <name>ThemeableBrowser</name>
