@@ -76,6 +76,16 @@ const float MyFinalProgressValue = 0.9f;
 
 @implementation CDVThemeableBrowser
 
+#ifdef __CORDOVA_4_0_0
+- (void)pluginInitialize
+{
+    if (self != nil) {
+        _isShown = NO;
+        _callbackIdPattern = nil;
+    }
+}
+#else
+
 - (CDVThemeableBrowser*)initWithWebView:(UIWebView*)theWebView
 {
     self = [super initWithWebView:theWebView];
@@ -86,6 +96,8 @@ const float MyFinalProgressValue = 0.9f;
 
     return self;
 }
+
+#endif
 
 - (void)onReset
 {
@@ -326,16 +338,19 @@ const float MyFinalProgressValue = 0.9f;
 
 - (void)openInCordovaWebView:(NSURL*)url withOptions:(NSString*)options
 {
-    if ([self.commandDelegate URLIsWhitelisted:url]) {
-        NSURLRequest* request = [NSURLRequest requestWithURL:url];
+    NSURLRequest* request = [NSURLRequest requestWithURL:url];
+    
 #ifdef __CORDOVA_4_0_0
+        // the webview engine itself will filter for this according to <allow-navigation> policy
+        // in config.xml for cordova-ios-4.0
         [self.webViewEngine loadRequest:request];
 #else
+     if ([self.commandDelegate URLIsWhitelisted:url]) {
         [self.webView loadRequest:request];
-#endif
-    } else { // this assumes the ThemeableBrowser can be excepted from the white-list
+     } else { // this assumes the ThemeableBrowser can be excepted from the white-list
         [self openInThemeableBrowser:url withOptions:options];
     }
+ #endif
 }
 
 - (void)openInSystem:(NSURL*)url
