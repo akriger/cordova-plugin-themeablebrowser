@@ -18,16 +18,15 @@
   under the License.
 -->
 
-<<<<<<< HEAD
 <plugin xmlns="http://apache.org/cordova/ns/plugins/1.0"
            id="cordova-plugin-themeablebrowser-womack"
-      version="0.2.17">
+      version="0.2.12">
 
     <name>ThemeableBrowser</name>
     <description>Cordova ThemeableBrowser Plugin</description>
     <license>Apache 2.0</license>
     <keywords>cordova,in,app,browser,themeablebrowser</keywords>
-    <repo>https://github.com/akriger/cordova-plugin-themeablebrowser</repo>
+    <repo>https://github.com/initialxy/cordova-plugin-themeablebrowser.git</repo>
     <issue>https://github.com/initialxy/cordova-plugin-themeablebrowser/issues</issue>
 
     <engines>
@@ -40,7 +39,7 @@
             <clobbers target="cordova.ThemeableBrowser" />
         </js-module>
         <config-file target="res/xml/config.xml" parent="/*">
-            <feature name="ThemeableBrowser">
+            <feature name="ThemeableBrowser"> 
                 <param name="android-package" value="com.initialxy.cordova.themeablebrowser.ThemeableBrowser"/>
             </feature>
         </config-file>
@@ -55,16 +54,16 @@
     <platform name="ios">
         <js-module src="www/themeablebrowser.js" name="themeablebrowser">
             <clobbers target="cordova.ThemeableBrowser" />
-        </js-module>
+        </js-module>  
         <config-file target="config.xml" parent="/*">
             <feature name="ThemeableBrowser">
-                <param name="ios-package" value="CDVThemeableBrowser" />
+                <param name="ios-package" value="CDVThemeableBrowser" /> 
             </feature>
         </config-file>
 
         <header-file src="src/ios/CDVThemeableBrowser.h" />
         <source-file src="src/ios/CDVThemeableBrowser.m" />
-
+        
         <framework src="CoreGraphics.framework" />
     </platform>
 </plugin>
